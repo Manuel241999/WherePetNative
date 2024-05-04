@@ -3,7 +3,7 @@ import { setContext } from '@apollo/client/link/context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const httpLink: ApolloLink = createHttpLink({
-  uri: 'http://10.0.2.2:4000/',
+  uri: 'https://wherepetapi-ea4c9315e9ed.herokuapp.com/',
 });
 
 const authLink: ApolloLink = setContext(async (_, { headers }): Promise<{ headers: Record<string, string> }> => {

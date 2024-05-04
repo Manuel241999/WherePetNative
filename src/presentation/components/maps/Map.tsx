@@ -1,10 +1,19 @@
-import { View, Platform } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Platform, Image } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
 import { Location } from '../../../infrastructure/interfaces/location';
 import { FAB } from '../ui/FAB';
-import { useEffect, useRef, useState } from 'react';
-import { useLocationStore } from '../../store/location/useLocationStore';
-import { Image } from 'react-native';
+import { gql, useQuery } from '@apollo/client';
+
+// Definición del query de GraphQL
+const GET_LOCATION_DATA = gql`
+  query ObtenerZonas {
+    obtenerZonas(input: { idUsuario: "6629b321d89f4e5852983afd" }) {
+      latitud
+      longitud
+    }
+  }
+`;
 
 interface Props {
   showsUserLocation?: boolean;
@@ -13,112 +22,79 @@ interface Props {
 
 export const Map = ({ showsUserLocation = false, initialLocation }: Props) => {
   const mapRef = useRef<MapView>();
-  const camaraLocation = useRef<Location>(initialLocation);
+  const [locationHistory, setLocationHistory] = useState([initialLocation]);
   const [isFollowingUser, setIsFollowingUser] = useState(true);
-  const [isShowingPolyline, setIsShowingPolyline] = useState(true);
+  const [showPath, setShowPath] = useState(true);
 
-  const {
-    getLocation,
-    lastKnownLocation,
-    watchLocation,
-    clearWatchLocation,
-    userLocationList,
-  } = useLocationStore();
-
-  const moveCameraToLocation = (location: Location) => {
-    if (!mapRef.current) return;
-    mapRef.current.animateCamera({
-      center: location,
-      pitch: 0,
-      heading: 0,
-      altitude: 0,
-      zoom: 15,
-    });
-  };
-
-  const moveToCurrentLocation = async () => {
-    const location = await getLocation();
-    console.log('Ubicación obtenida:', location);
-    if (!location) return;
-    moveCameraToLocation(location);
-  };
+  const { data, startPolling, stopPolling } = useQuery(GET_LOCATION_DATA, {
+    fetchPolicy: 'network-only'
+  });
 
   useEffect(() => {
-    watchLocation();
-    return () => {
-      clearWatchLocation();
-    };
+    startPolling(5000);
+    return () => stopPolling();
   }, []);
 
   useEffect(() => {
-    if (lastKnownLocation && isFollowingUser) {
-      moveCameraToLocation(lastKnownLocation);
+    if (data && data.obtenerZonas && data.obtenerZonas.length > 0) {
+      const lastLocation = data.obtenerZonas[data.obtenerZonas.length - 1];
+      setLocationHistory(prev => [...prev, {
+        latitude: lastLocation.latitud,
+        longitude: lastLocation.longitud
+      }]);
     }
-  }, [lastKnownLocation, isFollowingUser]);
+  }, [data]);
+
+  const centerOnPet = () => {
+    const lastLocation = locationHistory[locationHistory.length - 1];
+    mapRef.current?.animateCamera({
+      center: lastLocation,
+      pitch: 0,
+      heading: 0,
+      altitude: 0,
+      zoom: 18,
+    });
+  };
 
   return (
     <>
       <MapView
-        ref={map => (mapRef.current = map!)}
+        ref={mapRef}
         showsUserLocation={showsUserLocation}
         provider={Platform.OS === 'ios' ? undefined : PROVIDER_GOOGLE}
         style={{ flex: 1 }}
-        onTouchStart={() => setIsFollowingUser(false)}
-        region={{
-          latitude: camaraLocation.current.latitude,
-          longitude: camaraLocation.current.longitude,
+        initialRegion={{
+          latitude: initialLocation.latitude,
+          longitude: initialLocation.longitude,
           latitudeDelta: 0.015,
           longitudeDelta: 0.0121,
         }}
       >
-        {isShowingPolyline && (
-          <Polyline
-            coordinates={userLocationList}
-            strokeColor="red"
-            strokeWidth={5}
-          />
-        )}
-
-        {/* Personalized Marker */}
         <Marker
-          coordinate={{
-            latitude: lastKnownLocation?.latitude || initialLocation.latitude,
-            longitude: lastKnownLocation?.longitude || initialLocation.longitude,
-          }}
-          title="Your Current Location"
+          coordinate={locationHistory[locationHistory.length - 1]}
+          title="Current Location"
         >
           <Image
             source={require("../../../assets/perro.png")}
             style={{ width: 50, height: 50 }}
           />
         </Marker>
+        {showPath && <Polyline
+          coordinates={locationHistory}
+          strokeColor="red"
+          strokeWidth={5}
+        />}
       </MapView>
 
       <FAB
-        iconName={isShowingPolyline ? 'eye-outline' : 'eye-off-outline'}
-        onPress={() => setIsShowingPolyline(!isShowingPolyline)}
-        style={{
-          bottom: 140,
-          right: 20,
-        }}
+        iconName='eye-outline'
+        onPress={() => setShowPath(!showPath)}
+        style={{ bottom: 80, right: 20 }}
       />
-
       <FAB
-        iconName={isFollowingUser ? 'walk-outline' : 'accessibility-outline'}
-        onPress={() => setIsFollowingUser(!isFollowingUser)}
-        style={{
-          bottom: 80,
-          right: 20,
-        }}
-      />
-
-      <FAB
-        iconName="compass-outline"
-        onPress={moveToCurrentLocation}
-        style={{
-          bottom: 20,
-          right: 20,
-        }}
+        iconName='compass-outline'
+        onPress={centerOnPet}
+        style={{ bottom: 20, right: 20 }}
       />
     </>
   );
