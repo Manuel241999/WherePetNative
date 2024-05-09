@@ -1,14 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Platform, Image } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
-import { Location } from '../../../infrastructure/interfaces/location';
-import { FAB } from '../ui/FAB';
-import { gql, useQuery } from '@apollo/client';
+import React, {useEffect, useRef, useState} from 'react';
+import {View, Platform, Image} from 'react-native';
+import MapView, {
+  Marker,
+  PROVIDER_GOOGLE,
+  Polyline,
+  Circle,
+} from 'react-native-maps';
+import {Location} from '../../../infrastructure/interfaces/location';
+import {FAB} from '../ui/FAB';
+import {gql, useQuery} from '@apollo/client';
 
 // Definición del query de GraphQL
 const GET_LOCATION_DATA = gql`
   query ObtenerZonas {
-    obtenerZonas(input: { idUsuario: "6629b321d89f4e5852983afd" }) {
+    obtenerZonas(input: {idUsuario: "6629b321d89f4e5852983afd"}) {
       latitud
       longitud
     }
@@ -20,14 +25,14 @@ interface Props {
   initialLocation: Location;
 }
 
-export const Map = ({ showsUserLocation = false, initialLocation }: Props) => {
+export const Map = ({showsUserLocation = false, initialLocation}: Props) => {
   const mapRef = useRef<MapView>();
   const [locationHistory, setLocationHistory] = useState([initialLocation]);
   const [isFollowingUser, setIsFollowingUser] = useState(true);
   const [showPath, setShowPath] = useState(true);
 
-  const { data, startPolling, stopPolling } = useQuery(GET_LOCATION_DATA, {
-    fetchPolicy: 'network-only'
+  const {data, startPolling, stopPolling} = useQuery(GET_LOCATION_DATA, {
+    fetchPolicy: 'network-only',
   });
 
   useEffect(() => {
@@ -38,10 +43,13 @@ export const Map = ({ showsUserLocation = false, initialLocation }: Props) => {
   useEffect(() => {
     if (data && data.obtenerZonas && data.obtenerZonas.length > 0) {
       const lastLocation = data.obtenerZonas[data.obtenerZonas.length - 1];
-      setLocationHistory(prev => [...prev, {
-        latitude: lastLocation.latitud,
-        longitude: lastLocation.longitud
-      }]);
+      setLocationHistory(prev => [
+        ...prev,
+        {
+          latitude: lastLocation.latitud,
+          longitude: lastLocation.longitud,
+        },
+      ]);
     }
   }, [data]);
 
@@ -62,39 +70,45 @@ export const Map = ({ showsUserLocation = false, initialLocation }: Props) => {
         ref={mapRef}
         showsUserLocation={showsUserLocation}
         provider={Platform.OS === 'ios' ? undefined : PROVIDER_GOOGLE}
-        style={{ flex: 1 }}
+        style={{flex: 1}}
         initialRegion={{
           latitude: initialLocation.latitude,
           longitude: initialLocation.longitude,
           latitudeDelta: 0.015,
           longitudeDelta: 0.0121,
-        }}
-      >
+        }}>
         <Marker
           coordinate={locationHistory[locationHistory.length - 1]}
-          title="Current Location"
-        >
+          title="Current Location">
           <Image
-            source={require("../../../assets/perro.png")}
-            style={{ width: 50, height: 50 }}
+            source={require('../../../assets/perro.png')}
+            style={{width: 50, height: 50}}
           />
         </Marker>
-        {showPath && <Polyline
-          coordinates={locationHistory}
-          strokeColor="red"
-          strokeWidth={5}
-        />}
+        {showPath && (
+          <Polyline
+            coordinates={locationHistory}
+            strokeColor="red"
+            strokeWidth={5}
+          />
+        )}
+        <Circle
+          center={{latitude: 14.532903721556067, longitude: -90.5671667587012}}
+          radius={20} // radio en metros
+          fillColor="rgba(0, 128, 255, 0.3)" // Color del círculo
+          strokeColor="blue" // Color del borde
+        />
       </MapView>
 
       <FAB
-        iconName='eye-outline'
+        iconName="eye-outline"
         onPress={() => setShowPath(!showPath)}
-        style={{ bottom: 80, right: 20 }}
+        style={{bottom: 80, right: 20}}
       />
       <FAB
-        iconName='compass-outline'
+        iconName="compass-outline"
         onPress={centerOnPet}
-        style={{ bottom: 20, right: 20 }}
+        style={{bottom: 20, right: 20}}
       />
     </>
   );
