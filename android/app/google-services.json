@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "867191667882",
+    "project_id": "tesis-a08d8",
+    "storage_bucket": "tesis-a08d8.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:867191667882:android:10788b3023b3daf3e424d3",
+        "android_client_info": {
+          "package_name": "com.mapsapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAibkL6Sgn6a_Y7qRUVSQcLVtwpHzJU8gk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
