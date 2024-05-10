@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Platform, Image, Alert } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, Polyline, Circle, Region } from 'react-native-maps';
+import { View, Platform, Image } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE, Polyline, Circle } from 'react-native-maps';
 import { gql, useQuery } from '@apollo/client';
-import {FAB} from '../ui/FAB';
+import { FAB } from '../ui/FAB';
+import PushNotification from 'react-native-push-notification';
 
 // Definición del query de GraphQL
 const GET_LOCATION_DATA = gql`
@@ -31,7 +32,31 @@ export const Map = ({ showsUserLocation = false, initialLocation }: Props) => {
   const safeZoneCenter: Location = {latitude: 14.532903721556067, longitude: -90.5671667587012};
   const safeZoneRadius = 20; // radius in meters
 
-  const {data, startPolling, stopPolling} = useQuery(GET_LOCATION_DATA, {
+  // Configuración inicial de notificaciones push
+  useEffect(() => {
+    PushNotification.configure({
+      onNotification: function(notification) {
+        console.log("NOTIFICATION:", notification);
+        // Manejo de la notificación aquí si es necesario
+      },
+      requestPermissions: true,  // Solicitar permisos automáticamente en iOS, en Android se recomienda hacerlo manualmente si es necesario
+    });
+
+    // Crear canal de notificaciones para Android
+    if (Platform.OS === 'android') {
+      PushNotification.createChannel({
+        channelId: "default-channel", // Debe ser único
+        channelName: "Default channel", // Nombre del canal
+        channelDescription: "A default channel for basic notifications", // Descripción del canal
+        playSound: true,
+        soundName: 'default',
+        importance: 4,
+        vibrate: true,
+      });
+    }
+  }, []);
+
+  const { data, startPolling, stopPolling } = useQuery(GET_LOCATION_DATA, {
     fetchPolicy: 'network-only',
   });
 
@@ -49,23 +74,25 @@ export const Map = ({ showsUserLocation = false, initialLocation }: Props) => {
       };
       setLocationHistory(prev => [...prev, newLocation]);
 
-      // Check if the pet is outside the safe zone
       if (getDistanceFromLatLonInMeters(newLocation, safeZoneCenter) > safeZoneRadius) {
-        Alert.alert("Alerta", "Tu mascota ha salido de la zona segura.");
+        PushNotification.localNotification({
+          channelId: "default-channel",  // Usar el ID del canal creado
+          title: "Alerta de mascota",
+          message: "Tu mascota ha salido de la zona segura.",
+          playSound: true,
+          soundName: "default",
+        });
       }
     }
   }, [data]);
 
   const getDistanceFromLatLonInMeters = (loc1: Location, loc2: Location): number => {
-    const R = 6371; // Radius of the earth in km
+    const R = 6371; // Radio de la tierra en km
     const dLat = deg2rad(loc2.latitude - loc1.latitude);
     const dLon = deg2rad(loc2.longitude - loc1.longitude);
-    const a = 
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(deg2rad(loc1.latitude)) * Math.cos(deg2rad(loc2.latitude)) * 
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(deg2rad(loc1.latitude)) * Math.cos(deg2rad(loc2.latitude)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
-    return R * c * 1000; // Distance in meters
+    return R * c * 1000; // Distancia en metros
   };
 
   const deg2rad = (deg: number): number => {
