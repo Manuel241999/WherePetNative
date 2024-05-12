@@ -1,3 +1,4 @@
+// Archivo build.gradle a nivel de proyecto
 buildscript {
     ext {
         buildToolsVersion = "34.0.0"
@@ -19,4 +20,10 @@ buildscript {
     }
 }
 
-apply plugin: "com.facebook.react.rootproject"
+plugins {
+    id("com.android.application") version "4.2.1" apply false
+    id("com.google.gms.google-services") version "4.4.1" apply false
+}
+
+
+// Puedes continuar con las demás configuraciones...
